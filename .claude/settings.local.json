@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git rev-list:*)",
+      "Bash(find:*)",
+      "Bash(git fsck:*)",
+      "Bash(git count-objects:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
