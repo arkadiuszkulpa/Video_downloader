@@ -64,14 +64,23 @@ def tidy_chunk(chunk, api_key, endpoint):
         "content-type": "application/json"
     }
     payload = {
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "claude-opus-4-5-20251101",
         "max_tokens": 1024,
         "messages": [
             {"role": "user", "content": f"{system_message}\n{chunk}"}
         ]
     }
     response = requests.post(endpoint, json=payload, headers=headers)
-    return response.json()['content'][0]['text']
+    response_json = response.json()
+
+    # Check for errors in response
+    if 'error' in response_json:
+        raise Exception(f"API Error: {response_json['error']}")
+
+    if 'content' not in response_json:
+        raise Exception(f"Unexpected API response: {response_json}")
+
+    return response_json['content'][0]['text']
 
 def summarize_chunk(chunk, api_key, endpoint, chunk_label=None):
     prompt = (
@@ -89,14 +98,22 @@ def summarize_chunk(chunk, api_key, endpoint, chunk_label=None):
         "content-type": "application/json"
     }
     payload = {
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "claude-opus-4-5-20251101",
         "max_tokens": 2048,
         "messages": [
             {"role": "user", "content": prompt}
         ]
     }
     response = requests.post(endpoint, json=payload, headers=headers)
-    return response.json()['content'][0]['text']
+    response_json = response.json()
+
+    if 'error' in response_json:
+        raise Exception(f"API Error: {response_json['error']}")
+
+    if 'content' not in response_json:
+        raise Exception(f"Unexpected API response: {response_json}")
+
+    return response_json['content'][0]['text']
 
 def iterative_summary(summaries, api_key, endpoint):
     prompt = (
@@ -112,14 +129,22 @@ def iterative_summary(summaries, api_key, endpoint):
         "content-type": "application/json"
     }
     payload = {
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "claude-opus-4-5-20251101",
         "max_tokens": 4096,
         "messages": [
             {"role": "user", "content": prompt}
         ]
     }
     response = requests.post(endpoint, json=payload, headers=headers)
-    return response.json()['content'][0]['text']
+    response_json = response.json()
+
+    if 'error' in response_json:
+        raise Exception(f"API Error: {response_json['error']}")
+
+    if 'content' not in response_json:
+        raise Exception(f"Unexpected API response: {response_json}")
+
+    return response_json['content'][0]['text']
 
 def parse_args():
     """Parse command-line arguments"""

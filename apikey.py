@@ -48,4 +48,17 @@ def get_secret(secret_name=None, region_name=None):
         raise e
 
     secret = get_secret_value_response['SecretString']
+
+    # Try to parse as JSON if it looks like JSON
+    if secret.strip().startswith('{'):
+        import json
+        try:
+            secret_dict = json.loads(secret)
+            # If it's a dict, try common key names
+            for key in ['api_key', 'apikey', 'key', 'anthropic_api_key']:
+                if key in secret_dict:
+                    return secret_dict[key]
+        except json.JSONDecodeError:
+            pass
+
     return secret  # Return the secret string (API key)

@@ -64,6 +64,8 @@ python analysis.py
 python analysis.py "dump/transcript.txt" --secret-name "my-secret" --region "us-east-1"
 ```
 
+python analysis.py "dump/E90 Day 2_January 6_20260106_115545_transcript.txt" --secret-name "anthropic/other" --region "eu-west-2"
+
 Optional arguments:
 - `--secret-name` - AWS Secrets Manager secret name (default: env `AWS_SECRET_NAME` or `anthropic/default`)
 - `--region` - AWS region (default: env `AWS_REGION` or `eu-west-2`)
