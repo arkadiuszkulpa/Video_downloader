@@ -7,7 +7,7 @@ def load_transcript(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         return f.read()
 
-def split_into_chunks(text, max_tokens=2000, overlap=500):
+def split_into_chunks(text, max_tokens=3000, overlap=200):
     """
     Split text into overlapping chunks to preserve context across boundaries.
     This helps maintain topic continuity in summaries.
@@ -54,9 +54,8 @@ def split_into_chunks(text, max_tokens=2000, overlap=500):
 
 def tidy_chunk(chunk, api_key, endpoint):
     system_message = (
-        "You are a helpful assistant. Tidy the following transcript chunk: "
-        "remove typos, infer proper words where words have not been recognised by the transcription, "
-        "add interpunction, create proper sentences, but do not change any of the meaning."
+        "Clean up this transcript: fix typos, add punctuation, and create proper sentences. "
+        "Keep it concise - don't expand or elaborate, just clean the existing text."
     )
     headers = {
         "x-api-key": api_key,
@@ -84,9 +83,9 @@ def tidy_chunk(chunk, api_key, endpoint):
 
 def summarize_chunk(chunk, api_key, endpoint, chunk_label=None):
     prompt = (
-        "Provide a comprehensive summary of this transcript chunk that covers ALL topics discussed. "
-        "Do NOT reduce to only the most important points - include all subjects, themes, and details mentioned. "
-        "Organize by topic if multiple topics are present. Maintain completeness over brevity."
+        "Summarize the key points from this transcript chunk. "
+        "Be concise - extract only the main ideas and important details. "
+        "Use bullet points or brief paragraphs."
     )
     if chunk_label is not None:
         prompt += f"\n\n[{chunk_label}]"
@@ -117,9 +116,9 @@ def summarize_chunk(chunk, api_key, endpoint, chunk_label=None):
 
 def iterative_summary(summaries, api_key, endpoint):
     prompt = (
-        "Synthesize these chunk summaries into a comprehensive final summary organized by topics. "
-        "Cover ALL topics mentioned across all chunks - do not filter to only highlights. "
-        "The goal is breadth and completeness, not brevity. Group related topics together.\n\n"
+        "Combine these summaries into one concise final summary. "
+        "Remove redundancy, keep only key points, and organize by topic. "
+        "Aim for a summary that's shorter than the original transcript.\n\n"
         "Chunk Summaries:\n\n"
         + "\n\n".join(summaries)
     )

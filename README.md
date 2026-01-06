@@ -71,8 +71,8 @@ Optional arguments:
 - `--region` - AWS region (default: env `AWS_REGION` or `eu-west-2`)
 
 **Features:**
-- Overlapping chunks (500 char) to preserve context
-- Comprehensive summaries covering ALL topics (not just highlights)
+- Overlapping chunks (200 char) to preserve context
+- Concise summaries extracting key points and main ideas
 - Topic-organized output
 - Saves to `_analysis.txt` file
 
