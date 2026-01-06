@@ -2,6 +2,8 @@ import requests
 import os
 import argparse
 import json
+from datetime import datetime
+from urllib.parse import urlparse, unquote
 
 HEADERS = {
     "accept": "*/*",
@@ -30,15 +32,65 @@ COOKIES = {
 }
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Download and process video content")
-    parser.add_argument('url', help='Video URL to download')
+    parser = argparse.ArgumentParser(description="Download and process video/audio content")
+    parser.add_argument('url', help='Video or audio URL to download')
     parser.add_argument('--headers-file', type=str, default=None,
                         help='JSON file with custom headers (optional)')
     parser.add_argument('--cookies-file', type=str, default=None,
                         help='JSON file with custom cookies (optional)')
     parser.add_argument('--output-dir', type=str, default='dump',
                         help='Output directory for files (default: dump)')
+    parser.add_argument('--no-auth', action='store_true',
+                        help='Skip default headers/cookies for public URLs')
     return parser.parse_args()
+
+def detect_file_type(url, headers_dict=None):
+    """Detect if URL is audio or video based on extension or Content-Type"""
+    # Check URL extension first
+    url_lower = url.lower()
+    if url_lower.endswith(('.mp3', '.m4a', '.wav', '.aac', '.flac', '.ogg')):
+        return 'audio'
+    if url_lower.endswith(('.mp4', '.avi', '.mkv', '.mov', '.webm', '.flv')):
+        return 'video'
+
+    # Check Content-Type from headers if available
+    if headers_dict and 'Content-Type' in headers_dict:
+        content_type = headers_dict['Content-Type'].lower()
+        if 'audio' in content_type:
+            return 'audio'
+        if 'video' in content_type:
+            return 'video'
+
+    # Default to video for backward compatibility
+    return 'video'
+
+def extract_filename_from_url(url):
+    """Extract filename from URL, handling URL encoding"""
+    parsed = urlparse(url)
+    filename = os.path.basename(parsed.path)
+    # Decode URL encoding (e.g., %20 -> space)
+    filename = unquote(filename)
+    return filename if filename else None
+
+def generate_output_filename(url, file_type, output_dir):
+    """Generate unique output filename with timestamp"""
+    # Try to extract original filename from URL
+    original_name = extract_filename_from_url(url)
+
+    if original_name:
+        # Use original filename with timestamp
+        name_without_ext, ext = os.path.splitext(original_name)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{name_without_ext}_{timestamp}{ext}"
+    else:
+        # Fallback to generic name with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        if file_type == 'audio':
+            filename = f"audio_{timestamp}.mp3"
+        else:
+            filename = f"video_{timestamp}.mp4"
+
+    return os.path.join(output_dir, filename)
 
 def get_video_size(url):
     # Use a range request as in the browser example
@@ -108,26 +160,49 @@ if __name__ == "__main__":
     # Ensure output directory exists
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Prepare headers and cookies (use defaults, allow override)
-    headers = HEADERS.copy()
-    cookies = COOKIES.copy()
+    # Prepare headers and cookies
+    if args.no_auth:
+        # For public URLs, use minimal headers
+        headers = {"User-Agent": "Mozilla/5.0"}
+        cookies = {}
+    else:
+        # Use defaults, allow override
+        headers = HEADERS.copy()
+        cookies = COOKIES.copy()
 
-    if args.headers_file:
-        with open(args.headers_file, 'r') as f:
-            headers.update(json.load(f))
+        if args.headers_file:
+            with open(args.headers_file, 'r') as f:
+                headers.update(json.load(f))
 
-    if args.cookies_file:
-        with open(args.cookies_file, 'r') as f:
-            cookies.update(json.load(f))
+        if args.cookies_file:
+            with open(args.cookies_file, 'r') as f:
+                cookies.update(json.load(f))
 
-    # Define output paths
-    output_file = os.path.join(args.output_dir, "video.mp4")
-    fixed_file = os.path.join(args.output_dir, "video_fixed.mp4")
+    # Detect file type
+    file_type = detect_file_type(args.url)
+    print(f"Detected file type: {file_type}")
+
+    # Generate unique output filename with timestamp
+    output_file = generate_output_filename(args.url, file_type, args.output_dir)
+    print(f"Output file: {output_file}")
+
+    # For video files, also define fixed file path
+    if file_type == 'video':
+        base_name = os.path.splitext(output_file)[0]
+        fixed_file = f"{base_name}_fixed.mp4"
+    else:
+        print("Audio file detected - will skip video processing")
 
     try:
         download_video(args.url, output_file)
-        # Fix MP4 for seeking
-        fix_mp4(output_file, fixed_file)
+
+        # Only process video files
+        if file_type == 'video':
+            print("Processing video file...")
+            fix_mp4(output_file, fixed_file)
+        else:
+            print(f"Audio file ready at: {output_file}")
+
     except Exception as e:
         print(f"Download error: {e}")
         print("Attempting fallback download method...")
@@ -137,5 +212,7 @@ if __name__ == "__main__":
                 if chunk:
                     f.write(chunk)
         print("Download complete (fallback mode).")
-        # Fix MP4 for seeking
-        fix_mp4(output_file, fixed_file)
+
+        # Only process video files
+        if file_type == 'video':
+            fix_mp4(output_file, fixed_file)
