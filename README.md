@@ -54,8 +54,25 @@ python transcribe.py
 
 ### 4. Analyze Transcript
 ```bash
+# Analyze specific transcript file
+python analysis.py "dump/your_transcript_file.txt"
+
+# Analyze default transcript.txt
 python analysis.py
+
+# Override AWS settings
+python analysis.py "dump/transcript.txt" --secret-name "my-secret" --region "us-east-1"
 ```
+
+Optional arguments:
+- `--secret-name` - AWS Secrets Manager secret name (default: env `AWS_SECRET_NAME` or `anthropic/default`)
+- `--region` - AWS region (default: env `AWS_REGION` or `eu-west-2`)
+
+**Features:**
+- Overlapping chunks (500 char) to preserve context
+- Comprehensive summaries covering ALL topics (not just highlights)
+- Topic-organized output
+- Saves to `_analysis.txt` file
 
 ## Output
 

@@ -121,31 +121,54 @@ def iterative_summary(summaries, api_key, endpoint):
     response = requests.post(endpoint, json=payload, headers=headers)
     return response.json()['content'][0]['text']
 
-def get_api_key():
+def parse_args():
+    """Parse command-line arguments"""
+    parser = argparse.ArgumentParser(
+        description="Analyze transcript with comprehensive topic-based summaries"
+    )
+    parser.add_argument(
+        'transcript',
+        nargs='?',
+        default=os.path.join("dump", "transcript.txt"),
+        help='Path to transcript file (default: dump/transcript.txt)'
+    )
+    parser.add_argument(
+        '--secret-name',
+        type=str,
+        default=None,
+        help='AWS Secrets Manager secret name (default: env AWS_SECRET_NAME or "anthropic/default")'
+    )
+    parser.add_argument(
+        '--region',
+        type=str,
+        default=None,
+        help='AWS region (default: env AWS_REGION or "eu-west-2")'
+    )
+    return parser.parse_args()
+
+def get_api_key(secret_name=None, region_name=None):
     """Get API key from AWS Secrets Manager"""
     from apikey import get_secret
-    return get_secret()
+    return get_secret(secret_name=secret_name, region_name=region_name)
 
 def main():
-    # Accept transcript file path as argument, or use default
-    if len(sys.argv) > 1:
-        transcript_path = sys.argv[1]
-    else:
-        transcript_path = os.path.join("dump", "transcript.txt")
+    args = parse_args()
 
-    print(f"Analyzing transcript: {transcript_path}")
+    print(f"Analyzing transcript: {args.transcript}")
 
     try:
-        api_key = get_api_key()
+        api_key = get_api_key(secret_name=args.secret_name, region_name=args.region)
     except Exception as e:
         print(f"Error: Could not retrieve API key from AWS Secrets Manager: {e}")
-        print("Please ensure your AWS credentials are configured correctly:")
+        print("\nPlease ensure your AWS credentials are configured correctly:")
         print("  aws configure")
-        print("And that the secret 'anthropic/default' exists in region 'eu-west-2'")
+        print(f"\nAnd that the secret exists in AWS Secrets Manager.")
+        print(f"Secret name: {args.secret_name or os.environ.get('AWS_SECRET_NAME', 'anthropic/default')}")
+        print(f"Region: {args.region or os.environ.get('AWS_REGION', 'eu-west-2')}")
         return
 
     endpoint = "https://api.anthropic.com/v1/messages"
-    transcript = load_transcript(transcript_path)
+    transcript = load_transcript(args.transcript)
 
     print(f"Splitting transcript into overlapping chunks...")
     chunks = split_into_chunks(transcript)
@@ -163,7 +186,7 @@ def main():
     final_summary = iterative_summary(chunk_summaries, api_key, endpoint)
 
     # Save output to file
-    output_basename = os.path.splitext(os.path.basename(transcript_path))[0]
+    output_basename = os.path.splitext(os.path.basename(args.transcript))[0]
     output_path = os.path.join("dump", f"{output_basename}_analysis.txt")
 
     with open(output_path, 'w', encoding='utf-8') as f:

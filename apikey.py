@@ -5,12 +5,31 @@
 
 import boto3
 from botocore.exceptions import ClientError
+import os
 
 
-def get_secret():
+def get_secret(secret_name=None, region_name=None):
+    """
+    Retrieve a secret from AWS Secrets Manager.
 
-    secret_name = "anthropic/default"
-    region_name = "eu-west-2"
+    Args:
+        secret_name: Name of the secret in AWS Secrets Manager.
+                    Defaults to environment variable AWS_SECRET_NAME or "anthropic/default"
+        region_name: AWS region where the secret is stored.
+                    Defaults to environment variable AWS_REGION or "eu-west-2"
+
+    Returns:
+        str: The secret value (API key)
+
+    Raises:
+        ClientError: If the secret cannot be retrieved
+    """
+    # Use provided values, fall back to environment variables, then to defaults
+    if secret_name is None:
+        secret_name = os.environ.get('AWS_SECRET_NAME', 'anthropic/default')
+
+    if region_name is None:
+        region_name = os.environ.get('AWS_REGION', 'eu-west-2')
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
@@ -30,4 +49,3 @@ def get_secret():
 
     secret = get_secret_value_response['SecretString']
     return secret  # Return the secret string (API key)
-    # Your code goes here.
