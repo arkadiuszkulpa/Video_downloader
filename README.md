@@ -17,23 +17,38 @@ Python toolkit for downloading videos, extracting audio, generating transcripts,
 
 ## Usage
 
-### 1. Download Video
+### 1. Download Video or Audio
 ```bash
-python main.py "VIDEO_URL"
+# For public URLs (recommended for most cases)
+python main.py "URL" --no-auth
+
+# For authenticated URLs (uses default headers/cookies)
+python main.py "URL"
 ```
 
 Optional arguments:
 - `--output-dir DIR` - Output directory (default: `dump/`)
 - `--headers-file FILE` - Custom headers JSON file
 - `--cookies-file FILE` - Custom cookies JSON file
+- `--no-auth` - Skip authentication (for public URLs)
 
-### 2. Extract Audio
+**Features:**
+- Auto-detects audio vs video files
+- Extracts original filename from URL
+- Adds timestamp to prevent overwriting
+- Supports resume for interrupted downloads
+
+### 2. Extract Audio (Video files only)
 ```bash
 python video2audio.py
 ```
 
 ### 3. Transcribe Audio
 ```bash
+# Transcribe specific file
+python transcribe.py "dump/your_audio_file.mp3"
+
+# Or transcribe default audio.mp3
 python transcribe.py
 ```
 
