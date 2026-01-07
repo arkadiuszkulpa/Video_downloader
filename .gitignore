@@ -6,3 +6,11 @@ __pycache__/
 .pytest_cache/
 .env
 *.pyc
+
+# GUI-related files
+config.json
+.encryption_key
+*.log
+build/
+dist/
+*.spec

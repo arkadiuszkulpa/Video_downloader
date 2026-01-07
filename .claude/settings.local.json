@@ -5,7 +5,9 @@
       "Bash(find:*)",
       "Bash(git fsck:*)",
       "Bash(git count-objects:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(dir \"c:\\\\Projects\\\\Video_downloader\" /s /b *.txt *.toml)",
+      "Bash(dir:*)"
     ]
   }
 }
