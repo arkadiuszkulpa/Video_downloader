@@ -1,5 +1,6 @@
 """Tkinter GUI components for video downloader pipeline."""
 
-from .app import VideoDownloaderApp
+# The main app is in gui_complete.py at the root level
+# This __init__.py just makes gui a package for widgets and tabs
 
-__all__ = ['VideoDownloaderApp']
+__all__ = []
