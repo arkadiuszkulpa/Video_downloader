@@ -1,0 +1,23 @@
+"""Test script to download Zoom video and see full error output."""
+
+from core.downloader import Downloader
+
+# Zoom URL - Fresh link from March 9, 2026
+url = "https://ssrweb.zoom.us/replay03/2026/02/12/43AB1E03-2CCA-4A11-A9F4-75C3645FA11E/GMT20260212-090807_Recording_1920x1200.mp4?response-content-type=video%2Fmp4&response-cache-control=max-age%3D0%2Cs-maxage%3D86400&data=36514cb0443897d375d314cba665f65de021117ca9edca84c53c1a3a97a99658&s001=yes&cid=aw1&fid=Pnck5d-WC6EEGyjuKz4mGbjkNDptqn3F527aHjfVrztXwWtRJ6AvDsgU21QADKlurUGsZXaoOaN5Vmjo.7G62Qv3suzWQOT9j&s002=Toz00V_AuPxLJ4JQ9j06n6OfpfWSNcl7m-vMQGIPcRtARQcLZ-PYTsSTuA.B4u81bBlS7BPp6xv&tid=v=2.0;clid=aw1;rid=WEB_79cc9dd3fbed4087fba9149fa3c061ee&Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6Imh0dHBzOi8vc3Nyd2ViLnpvb20udXMvcmVwbGF5MDMvMjAyNi8wMi8xMi80M0FCMUUwMy0yQ0NBLTRBMTEtQTlGNC03NUMzNjQ1RkExMUUvR01UMjAyNjAyMTItMDkwODA3X1JlY29yZGluZ18xOTIweDEyMDAubXA0P3Jlc3BvbnNlLWNvbnRlbnQtdHlwZT12aWRlbyUyRm1wNCZyZXNwb25zZS1jYWNoZS1jb250cm9sPW1heC1hZ2UlM0QwJTJDcy1tYXhhZ2UlM0Q4NjQwMCZkYXRhPTM2NTE0Y2IwNDQzODk3ZDM3NWQzMTRjYmE2NjVmNjVkZTAyMTExN2NhOWVkY2E4NGM1M2MxYTNhOTdhOTk2NTgmczAwMT15ZXMmY2lkPWF3MSZmaWQ9UG5jazVkLVdDNkVFR3lqdUt6NG1HYmprTkRwdHFuM0Y1MjdhSGpmVnJ6dFh3V3RSSjZBdkRzZ1UyMVFBREtsdXJVR3NaWGFvT2FONVZtam8uN0c2MlF2M3N1eldRT1Q5aiZzMDAyPVRvejAwVl9BdVB4TEo0SlE5ajA2bjZPZnBmV1NOY2w3bS12TVFHSVBjUnRBUlFjTFotUFlUc1NUdUEuQjR1ODFiQmxTN0JQcDZ4diZ0aWQ9dj0yLjA7Y2xpZD1hdzE7cmlkPVdFQl83OWNjOWRkM2ZiZWQ0MDg3ZmJhOTE0OWZhM2MwNjFlZSIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc3MzA2ODM2Mn19fV19&Signature=Bg0509kPZENLoWu0LrWQyND-i02mByVaNV054Eizcxssw8mtWx0vZFBXS0812WXRZ1NzatSPMrhhHitYKcJoCF8emr-XHAshh5qhrtlCqv6GFaw1GXmzMkQNtOnSuN~DoX0WU~4qOWfUklX4fAVJt0M5UqSOo8ZTBroRRXlXG4xXSkZPgWrgPcBgg6sh7a8U2yZF1YTcdLpB21s0OuO56pEGMxRVAXu9DQN3dRecZtan4YvBBb29deYDr0lNYjzQ8lJnw-DynXYtuzhuoNgVaoixHxMfq92Y-~wJpdxVpMWioAXTfbP7gI6FkfcDMntPnlO5V2pyDaDcMDIU40G2IA__&Key-Pair-Id=K1YYCGW8V4AHXW"
+
+# Create downloader
+downloader = Downloader()
+
+# Try to download WITH COOKIES
+print("Starting download test WITH cookies...")
+success, output_file, message = downloader.download(
+    url=url,
+    output_dir="dump/test",
+    cookies_file="zoom_cookies.json",
+    no_auth=False
+)
+
+print(f"\nResult:")
+print(f"  Success: {success}")
+print(f"  Output file: {output_file}")
+print(f"  Message: {message}")

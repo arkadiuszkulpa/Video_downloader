@@ -3,7 +3,8 @@
 from .auth_manager import AuthManager
 from .downloader import Downloader
 from .transcriber import Transcriber
+from .azure_transcriber import AzureSpeechTranscriber
 from .analyzer import Analyzer
 from .pipeline import Pipeline
 
-__all__ = ['AuthManager', 'Downloader', 'Transcriber', 'Analyzer', 'Pipeline']
+__all__ = ['AuthManager', 'Downloader', 'Transcriber', 'AzureSpeechTranscriber', 'Analyzer', 'Pipeline']

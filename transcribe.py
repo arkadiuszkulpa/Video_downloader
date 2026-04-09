@@ -1,7 +1,16 @@
-from faster_whisper import WhisperModel
-import torch
 import os
 import sys
+import torch
+
+# Corporate proxy SSL workaround - must be set BEFORE importing faster-whisper
+if 'SSL_CERT_FILE' not in os.environ:
+    os.environ['SSL_CERT_FILE'] = ''
+if 'REQUESTS_CA_BUNDLE' not in os.environ:
+    os.environ['REQUESTS_CA_BUNDLE'] = ''
+if 'CURL_CA_BUNDLE' not in os.environ:
+    os.environ['CURL_CA_BUNDLE'] = ''
+
+from faster_whisper import WhisperModel
 
 # Ensure dump folder exists
 os.makedirs("dump", exist_ok=True)

@@ -134,6 +134,18 @@ class SimpleDownloaderGUI(tk.Tk):
             messagebox.showerror("Invalid URL", error)
             return
 
+        # Check for blob URLs
+        if url.startswith('blob:'):
+            messagebox.showerror(
+                "Blob URL Detected",
+                "Cannot download blob URLs directly.\n\n"
+                "Blob URLs only exist in your browser's memory.\n\n"
+                "Please see INTRANET_DOWNLOAD_GUIDE.md for instructions\n"
+                "on finding the real video URL using your browser's\n"
+                "Developer Tools (F12 → Network tab)."
+            )
+            return
+
         # Validate directory
         is_valid, error = validate_directory(output_dir)
         if not is_valid:

@@ -1,7 +1,7 @@
 # Video Downloader GUI - Implementation Status
 
 ## Overview
-This document describes the Tkinter GUI implementation for the video downloader pipeline. **The core implementation is complete** with a fully functional GUI application.
+This document describes the Tkinter GUI implementation for the video downloader pipeline. P**The core implementation is complete** with a fully functional GUI application.
 
 ## Current Status: Core Implementation Complete ✓
 

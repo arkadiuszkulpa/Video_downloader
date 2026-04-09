@@ -99,8 +99,9 @@ class AuthManager:
         if not api_key:
             raise ValueError("API key cannot be empty or whitespace")
 
-        # Basic validation - Anthropic API keys start with 'sk-ant-'
-        if not api_key.startswith('sk-ant-'):
-            raise ValueError("Invalid API key format. Anthropic API keys should start with 'sk-ant-'")
+        # Basic validation - just check it's not empty
+        # Support multiple providers: Anthropic (sk-ant-*), Databricks (dapi*), OpenAI (sk-*), etc.
+        if len(api_key) < 10:
+            raise ValueError("API key appears too short (minimum 10 characters)")
 
         return api_key

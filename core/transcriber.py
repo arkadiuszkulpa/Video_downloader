@@ -2,6 +2,27 @@
 
 import os
 import torch
+
+# ============================================================================
+# SSL FIX: Commented out SSL bypass workarounds to test proper certificate bundle
+# If model downloads fail, uncomment these lines and use manual download script instead
+# Certificate bundle should be configured via Fix-SSLCertificates.ps1
+# ============================================================================
+
+# # Corporate proxy SSL workaround - DISABLED - testing proper certificate bundle
+# # These environment variables must be set BEFORE importing faster_whisper
+# # to affect the Rust reqwest client used for downloading models
+# if 'SSL_CERT_FILE' not in os.environ:
+#     os.environ['SSL_CERT_FILE'] = ''
+# if 'REQUESTS_CA_BUNDLE' not in os.environ:
+#     os.environ['REQUESTS_CA_BUNDLE'] = ''  
+# if 'CURL_CA_BUNDLE' not in os.environ:
+#     os.environ['CURL_CA_BUNDLE'] = ''
+# 
+# # Additional environment variables for Rust reqwest SSL bypass
+# os.environ['RUSTLS_DANGEROUS_CONFIGURATION'] = '1'
+# os.environ['NO_PROXY'] = '*'
+
 from faster_whisper import WhisperModel
 
 
@@ -136,6 +157,12 @@ class Transcriber:
         Returns:
             WhisperModel: Loaded model
         """
+        # Map generic "large" to "large-v3" (the current recommended version)
+        # This ensures backward compatibility and consistent model selection
+        if model_size == 'large':
+            model_size = 'large-v3'
+            self._log("Mapping 'large' to 'large-v3' (recommended version)", "info")
+        
         # Reuse model if already loaded with same parameters
         if (self._model is not None and
             self._current_model_size == model_size and
@@ -150,12 +177,74 @@ class Transcriber:
         if not self._is_model_cached(model_size):
             self._log(f"Model '{model_size}' will be downloaded on first use (~{self._get_model_size_estimate(model_size)})", "info")
             self._log("This is a one-time download and may take a few minutes...", "info")
+            
+            # Try to pre-download using Python requests (SSL bypass-friendly)
+            try:
+                self._predownload_model(model_size)
+            except Exception as e:
+                self._log(f"Pre-download attempt failed: {e}", "warning")
+                self._log("Will attempt standard download (may fail with SSL errors)...", "warning")
 
         self._model = WhisperModel(model_size, device=device)
         self._current_model_size = model_size
         self._current_device = device
 
         return self._model
+    
+    def _predownload_model(self, model_size):
+        """
+        Pre-download model using Python requests (SSL verification disabled).
+        
+        This works around SSL certificate issues with the Rust reqwest client
+        used by faster-whisper for downloading models.
+        
+        Args:
+            model_size (str): Model size to download
+        """
+        import requests
+        import urllib3
+        from huggingface_hub import hf_hub_download
+        
+        # Disable SSL warnings
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
+        self._log("Attempting pre-download with SSL bypass...", "info")
+        
+        # Model repository on Hugging Face
+        repo_id = f"Systran/faster-whisper-{model_size}"
+        
+        # Key files needed for the model
+        files_to_download = [
+            "config.json",
+            "model.bin",
+            "tokenizer.json",
+            "vocabulary.txt"
+        ]
+        
+        for filename in files_to_download:
+            try:
+                self._log(f"Downloading {filename}...", "info")
+                # Use hf_hub_download with custom session that bypasses SSL
+                import huggingface_hub.file_download
+                
+                # Monkey-patch the requests session to disable SSL
+                original_get = requests.Session.get
+                def patched_get(self, *args, **kwargs):
+                    kwargs['verify'] = False
+                    return original_get(self, *args, **kwargs)
+                
+                requests.Session.get = patched_get
+                
+                # Download the file
+                hf_hub_download(repo_id=repo_id, filename=filename)
+                
+                # Restore original get method
+                requests.Session.get = original_get
+                
+                self._log(f"Downloaded {filename}", "info")
+            except Exception as e:
+                self._log(f"Could not download {filename}: {e}", "warning")
+                raise
 
     def _is_model_cached(self, model_size):
         """

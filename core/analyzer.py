@@ -2,6 +2,10 @@
 
 import os
 import requests
+import urllib3
+
+# Disable SSL warnings for corporate proxy compatibility
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class Analyzer:
@@ -14,6 +18,7 @@ class Analyzer:
     - Progress reporting per chunk
     - Configurable API endpoint
     - Direct API key input (no AWS dependency in core logic)
+    - Multiple API providers (Anthropic, Databricks, OpenAI-compatible)
     """
 
     DEFAULT_ENDPOINT = "https://api.anthropic.com/v1/messages"
@@ -27,19 +32,22 @@ class Analyzer:
             progress_callback (ProgressCallback, optional): Callback for progress updates
         """
         self.progress_callback = progress_callback
+        self.api_provider = None  # Will be auto-detected or set explicitly
 
     def analyze(self, transcript_file, output_dir, api_key, endpoint=None,
-                max_tokens=3000, overlap=200):
+                max_tokens=3000, overlap=200, api_provider=None):
         """
         Analyze transcript file and generate summary.
 
         Args:
             transcript_file (str): Path to transcript file
             output_dir (str): Output directory for analysis
-            api_key (str): Anthropic API key
+            api_key (str): API key (supports Anthropic, Databricks, OpenAI-compatible)
             endpoint (str, optional): API endpoint (default: Anthropic API)
             max_tokens (int): Maximum tokens per chunk
             overlap (int): Overlap between chunks in characters
+            api_provider (str, optional): API provider type ('anthropic', 'databricks', 'openai')
+                                         If None, will auto-detect from endpoint
 
         Returns:
             tuple: (success: bool, analysis_file: str, message: str)
@@ -61,6 +69,14 @@ class Analyzer:
             # Use default endpoint if not provided
             if not endpoint:
                 endpoint = self.DEFAULT_ENDPOINT
+            
+            # Auto-detect API provider from endpoint or use provided
+            if api_provider:
+                self.api_provider = api_provider.lower()
+            else:
+                self.api_provider = self._detect_provider(endpoint)
+            
+            self._log(f"Using API provider: {self.api_provider}", "info")
 
             # Load transcript
             self._log(f"Loading transcript: {transcript_file}", "info")
@@ -183,31 +199,18 @@ class Analyzer:
             "Keep it concise - don't expand or elaborate, just clean the existing text."
         )
 
-        headers = {
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
-        }
+        headers = self._build_headers(api_key)
 
-        payload = {
-            "model": self.DEFAULT_MODEL,
-            "max_tokens": 1024,
-            "messages": [
-                {"role": "user", "content": f"{system_message}\n{chunk}"}
-            ]
-        }
+        payload = self._build_payload(
+            prompt=f"{system_message}\n{chunk}",
+            max_tokens=1024
+        )
 
-        response = requests.post(endpoint, json=payload, headers=headers)
+        response = requests.post(endpoint, json=payload, headers=headers, verify=False)
         response_json = response.json()
 
-        # Check for errors
-        if 'error' in response_json:
-            raise Exception(f"API Error: {response_json['error']}")
-
-        if 'content' not in response_json:
-            raise Exception(f"Unexpected API response: {response_json}")
-
-        return response_json['content'][0]['text']
+        # Extract response based on provider
+        return self._extract_response(response_json)
 
     def _summarize_chunk(self, chunk, api_key, endpoint, chunk_label=None):
         """
@@ -232,30 +235,13 @@ class Analyzer:
             prompt += f"\n\n[{chunk_label}]"
         prompt += f"\n\nTranscript:\n{chunk}"
 
-        headers = {
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
-        }
+        headers = self._build_headers(api_key)
+        payload = self._build_payload(prompt=prompt, max_tokens=2048)
 
-        payload = {
-            "model": self.DEFAULT_MODEL,
-            "max_tokens": 2048,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        }
-
-        response = requests.post(endpoint, json=payload, headers=headers)
+        response = requests.post(endpoint, json=payload, headers=headers, verify=False)
         response_json = response.json()
 
-        if 'error' in response_json:
-            raise Exception(f"API Error: {response_json['error']}")
-
-        if 'content' not in response_json:
-            raise Exception(f"Unexpected API response: {response_json}")
-
-        return response_json['content'][0]['text']
+        return self._extract_response(response_json)
 
     def _iterative_summary(self, summaries, api_key, endpoint):
         """
@@ -277,30 +263,13 @@ class Analyzer:
             + "\n\n".join(summaries)
         )
 
-        headers = {
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
-        }
+        headers = self._build_headers(api_key)
+        payload = self._build_payload(prompt=prompt, max_tokens=4096)
 
-        payload = {
-            "model": self.DEFAULT_MODEL,
-            "max_tokens": 4096,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        }
-
-        response = requests.post(endpoint, json=payload, headers=headers)
+        response = requests.post(endpoint, json=payload, headers=headers, verify=False)
         response_json = response.json()
 
-        if 'error' in response_json:
-            raise Exception(f"API Error: {response_json['error']}")
-
-        if 'content' not in response_json:
-            raise Exception(f"Unexpected API response: {response_json}")
-
-        return response_json['content'][0]['text']
+        return self._extract_response(response_json)
 
     def _save_analysis(self, output_path, final_summary, chunk_summaries):
         """
@@ -321,6 +290,138 @@ class Analyzer:
             f.write("=" * 80 + "\n\n")
             for s in chunk_summaries:
                 f.write(s + "\n\n")
+
+    def _detect_provider(self, endpoint):
+        """
+        Auto-detect API provider from endpoint URL.
+        
+        Args:
+            endpoint (str): API endpoint URL
+            
+        Returns:
+            str: Provider name ('anthropic', 'databricks', 'openai', or 'unknown')
+        """
+        endpoint_lower = endpoint.lower()
+        
+        if 'anthropic.com' in endpoint_lower:
+            return 'anthropic'
+        elif 'databricks' in endpoint_lower or 'azuredatabricks' in endpoint_lower:
+            return 'databricks'
+        elif 'openai.com' in endpoint_lower or 'azure.com' in endpoint_lower:
+            return 'openai'
+        else:
+            return 'unknown'
+    
+    def _build_headers(self, api_key):
+        """
+        Build HTTP headers based on API provider.
+        
+        Args:
+            api_key (str): API key
+            
+        Returns:
+            dict: HTTP headers
+        """
+        headers = {"content-type": "application/json"}
+        
+        if self.api_provider == 'anthropic':
+            headers["x-api-key"] = api_key
+            headers["anthropic-version"] = "2023-06-01"
+        elif self.api_provider == 'databricks':
+            headers["Authorization"] = f"Bearer {api_key}"
+        elif self.api_provider == 'openai':
+            headers["Authorization"] = f"Bearer {api_key}"
+        else:
+            # Default to Authorization header for unknown providers
+            headers["Authorization"] = f"Bearer {api_key}"
+        
+        return headers
+    
+    def _build_payload(self, prompt, max_tokens):
+        """
+        Build request payload based on API provider.
+        
+        Args:
+            prompt (str): Prompt text
+            max_tokens (int): Maximum tokens
+            
+        Returns:
+            dict: Request payload
+        """
+        if self.api_provider == 'anthropic':
+            return {
+                "model": self.DEFAULT_MODEL,
+                "max_tokens": max_tokens,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+        elif self.api_provider in ['databricks', 'openai']:
+            # OpenAI-compatible format (used by Databricks served models)
+            return {
+                "model": self.DEFAULT_MODEL,
+                "max_tokens": max_tokens,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+        else:
+            # Default to OpenAI-compatible format
+            return {
+                "model": self.DEFAULT_MODEL,
+                "max_tokens": max_tokens,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+    
+    def _extract_response(self, response_json):
+        """
+        Extract text response based on API provider format.
+        
+        Args:
+            response_json (dict): API response JSON
+            
+        Returns:
+            str: Extracted text
+            
+        Raises:
+            Exception: If response contains errors or unexpected format
+        """
+        # Check for errors (common across providers)
+        if 'error' in response_json:
+            error_detail = response_json['error']
+            if isinstance(error_detail, dict):
+                error_msg = error_detail.get('message', str(error_detail))
+            else:
+                error_msg = str(error_detail)
+            raise Exception(f"API Error: {error_msg}")
+        
+        # Extract content based on provider
+        if self.api_provider == 'anthropic':
+            if 'content' not in response_json:
+                raise Exception(f"Unexpected API response (missing 'content'): {response_json}")
+            return response_json['content'][0]['text']
+        
+        elif self.api_provider in ['databricks', 'openai']:
+            # OpenAI-compatible format
+            if 'choices' in response_json and len(response_json['choices']) > 0:
+                choice = response_json['choices'][0]
+                if 'message' in choice:
+                    return choice['message']['content']
+                elif 'text' in choice:
+                    return choice['text']
+            
+            # Fallback: try Anthropic format
+            if 'content' in response_json:
+                if isinstance(response_json['content'], list):
+                    return response_json['content'][0]['text']
+                return response_json['content']
+            
+            raise Exception(f"Unexpected API response format: {response_json}")
+        
+        else:
+            # Unknown provider - try common formats
+            if 'choices' in response_json:
+                return response_json['choices'][0]['message']['content']
+            elif 'content' in response_json:
+                return response_json['content'][0]['text']
+            else:
+                raise Exception(f"Unexpected API response format: {response_json}")
 
     def _log(self, message, level='info'):
         """Send log message via callback or print."""

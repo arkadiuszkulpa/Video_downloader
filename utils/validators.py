@@ -34,12 +34,14 @@ def validate_url(url):
         return False, f"Invalid URL: {str(e)}"
 
 
-def validate_api_key(api_key):
+def validate_api_key(api_key, provider=None):
     """
-    Validate Anthropic API key format.
+    Validate API key format for various providers.
 
     Args:
         api_key (str): API key to validate
+        provider (str, optional): Provider name for specific validation
+                                 ('anthropic', 'databricks', 'openai', or None for generic)
 
     Returns:
         tuple: (is_valid: bool, error_message: str or None)
@@ -49,11 +51,20 @@ def validate_api_key(api_key):
 
     api_key = api_key.strip()
 
-    if not api_key.startswith('sk-ant-'):
-        return False, "Anthropic API keys must start with 'sk-ant-'"
-
-    if len(api_key) < 20:
-        return False, "API key appears too short"
+    # Provider-specific validation
+    if provider and provider.lower() == 'anthropic':
+        if not api_key.startswith('sk-ant-'):
+            return False, "Anthropic API keys must start with 'sk-ant-'"
+    elif provider and provider.lower() == 'databricks':
+        if not api_key.startswith('dapi'):
+            return False, "Databricks API keys must start with 'dapi'"
+    elif provider and provider.lower() == 'openai':
+        if not api_key.startswith('sk-'):
+            return False, "OpenAI API keys must start with 'sk-'"
+    
+    # Generic validation (no specific provider)
+    if len(api_key) < 10:
+        return False, "API key appears too short (minimum 10 characters)"
 
     return True, None
 
