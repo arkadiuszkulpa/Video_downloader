@@ -172,7 +172,7 @@ class Downloader:
     def _detect_file_type(self, url):
         """Detect if URL is audio or video based on extension."""
         url_lower = url.lower()
-        if url_lower.endswith(('.mp3', '.m4a', '.wav', '.aac', '.flac', '.ogg')):
+        if url_lower.endswith(('.mp3', '.m4a', '.wav', '.aac', '.flac', '.ogg', '.amr')):
             return 'audio'
         if url_lower.endswith(('.mp4', '.avi', '.mkv', '.mov', '.webm', '.flv')):
             return 'video'
