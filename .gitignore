@@ -1,7 +1,8 @@
-/dump
 *.mp3
 *.mp4
 *.txt
+!dump/
+!dump/**
 __pycache__/
 .pytest_cache/
 .env
